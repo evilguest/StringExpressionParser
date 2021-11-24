@@ -6,19 +6,19 @@ public class Program
     public static void Main(string[] args)
     {
         Console.WriteLine("Hello, World!");
-        var x = Expression.Parameter(typeof(int), "x");
-        var y = Expression.Parameter(typeof(int), "y");
-        var z = Expression.Parameter(typeof(int), "z");
+        var x = NewParam("x");
+        var y = NewParam("y");
+        var z = NewParam("z");
 
         var a = new Arithmetics();
-        a.Parameters.Add(x);
-        a.Parameters.Add(y);
-        a.Parameters.Add(z);
+        a.Parameters.Add(x, y, z);
 
         var e = a.Parse("2*x + y + z");
         var l = Expression.Lambda<Func<int, int, int, int>>(e, x, y, z);
         var c = l.Compile();
         Console.WriteLine(c(1, 2, 3));
-         
+
     }
+
+    private static ParameterExpression NewParam(string name) => Expression.Parameter(typeof(int), name);
 }

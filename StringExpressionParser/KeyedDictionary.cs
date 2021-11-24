@@ -35,5 +35,10 @@ namespace StringExpressionParser
         IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)_dictionary).GetEnumerator();
         #endregion
         public void Add(T value) => _dictionary.Add(_keyExtractor(value), value);
+        public void Add(params T[] values)
+        {
+            foreach (var value in values)
+                Add(value);
+        }
     }
 }
