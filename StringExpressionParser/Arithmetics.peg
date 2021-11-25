@@ -10,28 +10,30 @@
 }
 
     add <Expression> -memoize
-        = left:add "+" right:mul { Expression.Add(left, right) }
-        / left:add "-" right:mul { Expression.Subtract(left, right) }
+        = left:mul ws "+" ws right:add { Expression.Add(left, right) }
+        / left:mul ws "-" ws right:add { Expression.Subtract(left, right) }
         / mul
 
     mul <Expression> -memoize
-        = left:mul "*" right:power { Expression.Multiply(left, right) }
-        / left:mul "/" right:power { Expression.Divide(left, right) }
+        = left:power ws "*" ws right:mul { Expression.Multiply(left, right) }
+        / left:power ws "/" ws right:mul { Expression.Divide(left, right) }
         / power
 
     power <Expression>
-        = left:primary "^" right:power { Expression.Multiply(left, right) }
+        = left:primary ws "^" ws right:power { Expression.Call(typeof(Math).GetMethod(nameof(Math.Pow)), left, right) }
         / primary
 
     primary <Expression> -memoize
         = decimal
         / "-" primary:primary { Expression.Negate(primary) }
-        / "(" additive:add ")" { additive }
+        / "(" ws additive:add ws ")" { additive }
         / parameter
 
     decimal <Expression>
-        = value:([0-9][0-9]* ) { Expression.Constant(int.Parse(value, CultureInfo.InvariantCulture)) }
+        = value:([0-9]+ ("." [0-9]+)?) { Expression.Constant(double.Parse(value, CultureInfo.InvariantCulture)) }
     parameter <Expression> 
         = param:paramName { Parameters[param] }
     
     paramName <string> = "x" / "y" / "z"
+
+    ws = [ \t\r\n]*
