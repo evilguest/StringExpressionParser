@@ -11,14 +11,19 @@ namespace StringExpressionParser
     public class KeyedDictionary<K, T> : IReadOnlyDictionary<K, T>
         where K: notnull
     {
-        public KeyedDictionary(Func<T, K> keyExtractor) => _keyExtractor = keyExtractor ?? throw new ArgumentNullException(nameof(keyExtractor));
+        public KeyedDictionary(Func<T, K> keyExtractor, string elementType)
+        {
+            _keyExtractor = keyExtractor ?? throw new ArgumentNullException(nameof(keyExtractor));
+            _dictionary = new(elementType);
+        }
+
         private readonly Func<T, K> _keyExtractor;
 
 
         #region IReadOnlyDictionary<K, T>
-        private readonly Dictionary<K, T> _dictionary = new();
+        private readonly ExpressionDictionary<K, T> _dictionary;
 
-        public T this[K key] => _dictionary[key];
+        public T this[K key] =>  _dictionary[key];
 
         public IEnumerable<K> Keys => _dictionary.Keys;
 
@@ -35,6 +40,7 @@ namespace StringExpressionParser
         IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)_dictionary).GetEnumerator();
         #endregion
         public void Add(T value) => _dictionary.Add(_keyExtractor(value), value);
+
         public void Add(params T[] values)
         {
             foreach (var value in values)

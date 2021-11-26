@@ -1,0 +1,106 @@
+﻿@using System.Globalization;
+@using System.Linq.Expressions;
+@using System.Text;
+@using System.Threading.Tasks;
+@using System.Reflection;
+
+@namespace StringExpressionParser
+@classname StringExpressionParserBase
+
+@members 
+{
+    public KeyedDictionary<string, ParameterExpression> Parameters = new(p=>p.Name, "Parameter");
+    public KeyedDictionary<string, MethodInfo> Functions = new(p=>p.Name, "Function");
+
+    public StringExpressionParserBase(params ParameterExpression[] parameters) => Parameters.Add(parameters);
+    public static string Substring(string s, int startIndex, int endIndex) => s.Substring(startIndex, endIndex - startIndex);
+    public static bool Contains(string where, string what) => where.IndexOf(what) >= 0;
+}
+    
+    string <Expression> -memoize
+        = ternary
+        / concat
+
+    ternary <Expression> -memoize
+        = "(" _ test:boolean _ "?" _ ifTrue:string _ ":" _ ifFalse:string _ ")" { Expression.Condition(test, ifTrue, ifFalse) }
+
+    boolean <Expression> -memoize
+        = left:conjunct _ "|" _ right:boolean { Expression.Or(left, right) }
+        / conjunct
+
+    conjunct <Expression> -memoize
+        = left:relative _ "&" _ right:conjunct { Expression.And(left, right) }
+        / relative
+
+    relative <Expression> -memoize
+        = left:string _ ">" _ right:string { Expression.GreaterThan(left, right) }
+        / left:string _ "<" _ right:string { Expression.LessThan(left, right) }
+        / left:string _ ">=" _ right:string { Expression.GreaterThanOrEqual(left, right) }
+        / left:string _ "<=" _ right:string { Expression.LessThanOrEqual(left, right) }
+        / left:string _ "=" _ right:string { Expression.Equal(left, right) }
+        / left:string _ "!=" _ right:string { Expression.NotEqual(left, right) }
+        / left:string _ "~" _ right:string { Expression.Call(null, typeof(StringExpressionParserBase).GetMethod(nameof(Contains)), left, right) }
+
+    concat <Expression> -memoize
+        = left:stringSlice _ "+" _ right:concat { Expression.Add(left, right, typeof(string).GetMethod(nameof(string.Concat), new[]{typeof(string), typeof(string)})) }
+        / stringSlice
+
+    add <Expression> -memoize
+        = left:mul _ "+" _ right:add { Expression.Add(left, right) }
+        / left:mul _ "-" _ right:add { Expression.Subtract(left, right) }
+        / mul
+
+    mul <Expression> -memoize
+        = left:integer _ "*" _ right:mul { Expression.Multiply(left, right) }
+        / left:integer "/" _ right:mul { Expression.Divide(left, right) }
+        / integer
+
+    integer<Expression> -memoize
+        = intConst
+        / "-" integer:integer { Expression.Negate(integer) }
+        / "(" _ add:add _ ")" { add }
+        / intFunc
+
+    intFunc <Expression> -memoize
+        = "Len" _ "(" _ str:string _ ")" { Expression.MakeMemberAccess(str, typeof(string).GetProperty(nameof(string.Length))) }
+        / "Find" _ "(" _ what:string _ "," _ where:string ")" { Expression.Call(where, typeof(string).GetMethod(nameof(string.IndexOf), new[] {typeof(string)}), what) }
+    
+    stringSlice <Expression> -memoize
+        = str:primitiveString _ "[" begin:add _ ".." _ end:add _ "]" { Expression.Call(null, typeof(StringExpressionParserBase).GetMethod(nameof(Substring)), str, begin, end) }
+        / primitiveString
+
+    primitiveString <Expression> -memoize
+        = stringFunc 
+        / stringConstant
+        / parameter
+        / "(" _ str:string _ ")" { str }
+
+    stringFunc <Expression> -memoize
+        = functionName:identifier "(" args:arguments _ ")" { Expression.Call(null, Functions[functionName], args) }
+        / "Lower" _ "(" _ str:string _ ")" { Expression.Call(str, typeof(string).GetMethod(nameof(string.ToLower), Array.Empty<Type>())) }
+
+    arguments <IEnumerable<Expression>>
+        = arg0: string _ "," _ tail:arguments { new[] {arg0}.Concat(tail) }
+        / arg0 : string?
+
+    stringConstant <Expression> 
+        =  "\"" str:([^"\\] / escape)* "\"" { Expression.Constant(string.Join("", str)) };
+
+    escape 
+        = "\\" character:["\/"] { character }
+        / "\\b" { "\b" }
+        / "\\f" { "\f" }
+        / "\\n" { "\n" }
+        / "\\r" { "\r" }
+        / "\\t" { "\t" }
+        / "\\u" codePoint:([0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]) { ((char)int.Parse(codePoint, NumberStyles.HexNumber)).ToString() }
+
+    intConst <Expression>
+        = value:([0-9][0-9]*) { Expression.Constant(int.Parse(value, CultureInfo.InvariantCulture)) }
+
+    parameter <Expression> 
+        = param:identifier { Parameters[param] }
+    
+    identifier <string> = ([a-zA-Z][a-zA-Z0-9]*)
+
+    _ = [ \t\r\n]*

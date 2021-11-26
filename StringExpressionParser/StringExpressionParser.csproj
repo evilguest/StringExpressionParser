@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <None Remove="Arithmetics.peg" />
+    <None Remove="StringExpressionParserBase.peg" />
   </ItemGroup>
 
   <ItemGroup>
@@ -17,6 +18,7 @@
 
   <ItemGroup>
     <PegGrammar Include="Arithmetics.peg" />
+    <PegGrammar Include="StringExpressionParserBase.peg" />
   </ItemGroup>
 
 </Project>

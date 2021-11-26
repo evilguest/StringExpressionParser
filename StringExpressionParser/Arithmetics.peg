@@ -6,7 +6,7 @@
 
 @members 
 {
-    public KeyedDictionary<string, ParameterExpression> Parameters = new(p=>p.Name);
+    public KeyedDictionary<string, ParameterExpression> Parameters = new(p=>p.Name, "Parameter");
 }
 
     add <Expression> -memoize
